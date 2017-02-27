@@ -98,6 +98,7 @@ import org.hippoecm.frontend.plugin.config.impl.JcrApplicationFactory;
 import org.hippoecm.frontend.session.PluginUserSession;
 import org.hippoecm.frontend.session.UserSession;
 import org.hippoecm.frontend.settings.GlobalSettings;
+import org.hippoecm.frontend.util.RequestUtils;
 import org.hippoecm.repository.HippoRepository;
 import org.hippoecm.repository.HippoRepositoryFactory;
 import org.hippoecm.repository.api.HippoNodeType;
@@ -329,11 +330,20 @@ public class Main extends PluginApplication {
                 @Override
                 public IRequestHandler mapRequest(final Request request, final MountParameters mountParams) {
 
-                    IRequestHandler requestTarget = new BookmarkablePageRequestHandler(new PageProvider(getHomePage(), null));
+                    IRequestHandler requestTarget = new RenderPageRequestHandler(new PageProvider(getHomePage(), null), RenderPageRequestHandler.RedirectPolicy.AUTO_REDIRECT);
 
                     IRequestParameters requestParameters = request.getRequestParameters();
                     final List<StringValue> cmsCSIDParams = requestParameters.getParameterValues("cmsCSID");
-                    final List<StringValue> destinationUrlParams = requestParameters.getParameterValues("destinationUrl");
+                    final List<StringValue> destinationPathParams = requestParameters.getParameterValues("destinationUrl");
+                    final String destinationUrl = destinationPathParams != null && !destinationPathParams.isEmpty()
+                            ? destinationPathParams.get(0).toString() : null;
+                    final String destinationPath;
+                    final String farthestUrlPrefix = RequestUtils.getFarthestUrlPrefix(request);
+                    if (destinationUrl != null && !destinationUrl.startsWith("/") && destinationUrl.startsWith(farthestUrlPrefix+"/")) {
+                        destinationPath = destinationUrl.substring(farthestUrlPrefix.length());
+                    } else {
+                        destinationPath = destinationUrl;
+                    }
 
                     PluginUserSession userSession = (PluginUserSession) Session.get();
                     final UserCredentials userCredentials = userSession.getUserCredentials();
@@ -341,13 +351,13 @@ public class Main extends PluginApplication {
                     HttpSession httpSession = ((ServletWebRequest)request).getContainerRequest().getSession();
                     final CmsSessionContext cmsSessionContext = CmsSessionContext.getContext(httpSession);
 
-                    if (destinationUrlParams.size() > 0 && (cmsSessionContext != null || userCredentials != null)) {
+                    if (destinationPath != null && destinationPath.startsWith("/") && (cmsSessionContext != null || userCredentials != null)) {
 
                         requestTarget = new IRequestHandler() {
 
                             @Override
                             public void respond(IRequestCycle requestCycle) {
-                                String destinationUrl = destinationUrlParams.get(0).toString();
+                                String destinationUrl = farthestUrlPrefix + destinationPath;
                                 WebResponse response = (WebResponse) RequestCycle.get().getResponse();
                                 String cmsCSID = cmsCSIDParams == null ? null : cmsCSIDParams.get(0) == null ? null : cmsCSIDParams.get(0).toString();
                                 if (!cmsContextService.getId().equals(cmsCSID)) {
