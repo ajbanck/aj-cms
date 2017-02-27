@@ -30,7 +30,6 @@ import javax.ws.rs.core.MediaType;
 import org.apache.cxf.common.util.StringUtils;
 import org.apache.cxf.jaxrs.client.JAXRSClientFactory;
 import org.apache.cxf.jaxrs.client.WebClient;
-import org.apache.wicket.protocol.http.servlet.ServletWebRequest;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.jaxrs.JacksonJaxbJsonProvider;
@@ -43,6 +42,7 @@ import org.hippoecm.frontend.service.IRestProxyService;
 import org.hippoecm.frontend.service.restproxy.custom.json.deserializers.AnnotationJsonDeserializer;
 import org.hippoecm.frontend.session.PluginUserSession;
 import org.hippoecm.frontend.session.UserSession;
+import org.hippoecm.frontend.util.RequestUtils;
 import org.onehippo.cms7.services.HippoServiceRegistry;
 import org.onehippo.cms7.services.cmscontext.CmsContextService;
 import org.onehippo.cms7.services.cmscontext.CmsInternalCmsContextService;
@@ -184,7 +184,8 @@ public class RestProxyServicePlugin extends Plugin implements IRestProxyService 
     public <T> T createSecureRestProxy(final Class<T> restServiceApiClass, final List<Object> additionalProviders) {
         T clientProxy = JAXRSClientFactory.create(restUri, restServiceApiClass, getProviders(additionalProviders));
 
-        HttpSession httpSession = ((ServletWebRequest)RequestCycle.get().getRequest()).getContainerRequest().getSession();
+        HttpServletRequest httpServletRequest = (HttpServletRequest) RequestCycle.get().getRequest().getContainerRequest();
+        HttpSession httpSession = httpServletRequest.getSession();
         CmsSessionContext cmsSessionContext = CmsSessionContext.getContext(httpSession);
         if (cmsSessionContext == null) {
             CmsInternalCmsContextService cmsContextService = (CmsInternalCmsContextService) HippoServiceRegistry.getService(CmsContextService.class);
@@ -196,7 +197,7 @@ public class RestProxyServicePlugin extends Plugin implements IRestProxyService 
         WebClient.client(clientProxy)
                 .header(HEADER_CMS_CONTEXT_SERVICE_ID, cmsSessionContext.getCmsContextServiceId())
                 .header(HEADER_CMS_SESSION_CONTEXT_ID, cmsSessionContext.getId())
-                .header(CMSREST_CMSHOST_HEADER, getFarthestRequestHost())
+                .header(CMSREST_CMSHOST_HEADER, RequestUtils.getFarthestRequestHost(httpServletRequest))
                 .accept(MediaType.WILDCARD_TYPE);
 
         // default time out is 60000 ms;
