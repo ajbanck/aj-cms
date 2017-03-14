@@ -28,18 +28,18 @@ import javax.security.auth.login.AccountExpiredException;
 import javax.security.auth.login.CredentialExpiredException;
 import javax.security.auth.login.FailedLoginException;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 import org.apache.cxf.common.util.StringUtils;
 import org.apache.wicket.Application;
 import org.apache.wicket.Component;
-import org.apache.wicket.RestartResponseException;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.LoadableDetachableModel;
+import org.apache.wicket.protocol.http.servlet.ServletWebRequest;
 import org.apache.wicket.request.Request;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.hippoecm.frontend.Home;
 import org.hippoecm.frontend.Main;
-import org.hippoecm.frontend.NoRepositoryAvailablePage;
 import org.hippoecm.frontend.PluginApplication;
 import org.hippoecm.frontend.RepositoryUnavailableException;
 import org.hippoecm.frontend.model.JcrSessionModel;
@@ -256,12 +256,14 @@ public class PluginUserSession extends UserSession {
         try {
             UserCredentials userCreds = getUserCredentialsFromRequestAttribute();
             login(userCreds, null);
-        } catch (LoginException ignore) {}
+        } catch (LoginException ignore) {
+        }
     }
 
     /**
      * {@link #login()} method invokes this method if there's any <code>UserCredentials</code> object from the request.
      * For example, Web SSO Agent can set a UserCredentials for the user as request attribute.
+     *
      * @return
      */
     protected UserCredentials getUserCredentialsFromRequestAttribute() {
@@ -280,7 +282,8 @@ public class PluginUserSession extends UserSession {
     }
 
     /**
-     * @deprecated temporary work-around to check application permissions in user session, 7.10 uses a different mechanism
+     * @deprecated temporary work-around to check application permissions in user session, 7.10 uses a different
+     * mechanism
      */
     @Deprecated
     public void loginWithPermissionChecker(UserCredentials credentials, PermissionChecker permissionChecker) throws LoginException {
@@ -355,10 +358,15 @@ public class PluginUserSession extends UserSession {
         if (credentials == null) {
             pageId = 0;
         } else {
+            // Set the username to facilitate two-factor authentication filters
+            getHttpSession().setAttribute("hippo:username", credentials.getUsername());
             pageId = 1;
         }
     }
 
+    private HttpSession getHttpSession() {
+        return ((ServletWebRequest) RequestCycle.get().getRequest()).getContainerRequest().getSession();
+    }
 
     public void logout() {
         classLoader.detach();
@@ -379,6 +387,8 @@ public class PluginUserSession extends UserSession {
         JcrObservationManager.getInstance().cleanupListeners(this);
 
         pageId = 0;
+
+        getHttpSession().removeAttribute("hippo:username");
 
         invalidate();
         dirty();
