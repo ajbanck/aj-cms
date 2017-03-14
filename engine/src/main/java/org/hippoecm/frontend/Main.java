@@ -47,6 +47,8 @@ import org.apache.wicket.core.request.handler.PageProvider;
 import org.apache.wicket.core.request.handler.RenderPageRequestHandler;
 import org.apache.wicket.core.util.resource.locator.IResourceNameIterator;
 import org.apache.wicket.core.util.resource.locator.IResourceStreamLocator;
+import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.html.IHeaderResponseDecorator;
 import org.apache.wicket.markup.html.IPackageResourceGuard;
 import org.apache.wicket.page.IPageManagerContext;
 import org.apache.wicket.pageStore.IDataStore;
@@ -504,8 +506,6 @@ public class Main extends PluginApplication {
 
                     @Override
                     protected BufferedWebResponse renderPage(final Url targetUrl, final RequestCycle requestCycle) {
-                        initPackageResourceGuard();
-
                         IRequestHandler scheduled = requestCycle.getRequestHandlerScheduledAfterCurrent();
                         if (scheduled == null) {
                             IRequestablePage page = getPage();
